@@ -21,8 +21,11 @@ jobs:
       - name: Make script executable
         run: chmod +x run_baseline.sh
 
-      - name: Run baseline test
-        run: ./run_baseline.sh
+      - name: Run baseline test 
+        run: |
+          echo "=== Starting baseline test ==="
+          bash -x run_baseline.sh  # -x shows each command as it runs
+          echo "=== Test complete ==="
 
       - name: Upload server log
         uses: actions/upload-artifact@v4
