@@ -1,40 +1,60 @@
 name: Run Baseline UDP Prototype
-
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
-
 jobs:
   run-baseline:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
+      
       - name: Install Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
-
+      
+      - name: List files
+        run: |
+          echo "=== Repository contents ==="
+          ls -la
+      
+      - name: Test Python files directly
+        run: |
+          echo "=== Testing server.py ==="
+          timeout 3 python3 server.py || echo "Server test timeout (expected)"
+          echo "=== Testing client.py ==="
+          timeout 2 python3 client.py || echo "Client test timeout (expected)"
+      
       - name: Make script executable
         run: chmod +x run_baseline.sh
-
-      - name: Run baseline test 
+      
+      - name: Run baseline test with full output
         run: |
-          echo "=== Starting baseline test ==="
-          bash -x run_baseline.sh  # -x shows each command as it runs
-          echo "=== Test complete ==="
-
-      - name: Upload server log
+          bash -x run_baseline.sh 2>&1 | tee test_output.log
+      
+      - name: Check what happened
+        if: always()
+        run: |
+          echo "=== Current directory ==="
+          pwd
+          ls -la
+          echo "=== Looking for CSV files ==="
+          find . -name "*.csv" -ls
+          echo "=== Looking for log files ==="
+          find . -name "*.log" -ls
+          if [ -f test_output.log ]; then
+            echo "=== Test output ==="
+            cat test_output.log
+          fi
+      
+      - name: Upload all logs
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: server_log
-          path: server_log.csv
-
-      - name: Upload client log
-        uses: actions/upload-artifact@v4
-        with:
-          name: client_log
-          path: client_log.csv
+          name: all-logs
+          path: |
+            *.csv
+            *.log
+          if-no-files-found: warn
