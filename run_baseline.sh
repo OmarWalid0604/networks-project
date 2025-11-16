@@ -4,21 +4,21 @@ set -euo pipefail
 rm -f server_log.csv client_log.csv
 
 # Start server
-python3 server.py > /dev/null 2>&1 &
+python3 server.py &
 SERVER_PID=$!
-sleep 0.5
+sleep 2
 
-# Start one client (you can add more clients in new shells if desired)
-python3 client.py > /dev/null 2>&1 &
+# Start one client 
+python3 client.py &
 CLIENT_PID=$!
 
 # Run baseline for ~5 seconds
-sleep 5
+sleep 10
 
 # Stop processes
-kill $CLIENT_PID || true
-kill $SERVER_PID || true
-wait || true
+kill $CLIENT_PID 2>/dev/null || true
+kill $SERVER_PID 2>/dev/null || true
+wait 2>/dev/null || true
 
 echo "=== Baseline complete ==="
-ls -l server_log.csv client_log.csv
+ls -l server_log.csv client_log.csv 2>/dev/null || echo "CSV files not found"
