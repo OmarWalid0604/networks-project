@@ -63,16 +63,22 @@ run_scenario() {
     # Start clients
     echo "[start] launching $CLIENTS clients"
     CLIENT_PIDS=""
+
     for i in $(seq 1 $CLIENTS); do
         C_DIR="$OUT_DIR/client_$i"
         mkdir -p "$C_DIR"
 
-        python3 client.py \
-            > "$C_DIR/client_output.txt" 2>&1 &
+        cp client.py "$C_DIR/"   # Ensure client.py is inside folder
 
-        PID=$!
+        (
+            cd "$C_DIR" || exit
+            echo "[client $i] running in $(pwd)"
+            nohup python3 client.py > client_output.txt 2>&1 &
+            echo $! > pid.txt
+        )
+        PID=$(cat "$C_DIR/pid.txt")
         CLIENT_PIDS="$CLIENT_PIDS $PID"
-        echo "[start] launching client $i in $C_DIR"
+        echo "[start] launched client $i pid=$PID"
     done
 
     echo "[info] All clients started: $CLIENT_PIDS"
