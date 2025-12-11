@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import socket, struct, time, csv
+import socket, struct, time, csv, os
 
 # ======================================================
 #                 PROTOCOL CONSTANTS
@@ -52,20 +52,15 @@ def main(client_name="player1"):
     expected_snapshot = 1
     lost_snapshots = 0
 
-    # --------------------------
-    # CSV FILES
-    # --------------------------
-    metrics_f = open("client_metrics.csv", "w", newline="")
-    metrics_w = csv.writer(metrics_f)
-    metrics_w.writerow([
-        "client_id","snapshot_id","seq_num",
-        "server_timestamp_ms","recv_time_ms",
-        "latency_ms","jitter_ms","lost_snapshots"
-    ])
+    client_id = None
+    players_raw = {}
+    players_smooth = {}
 
-    disp_f = open("client_display.csv", "w", newline="")
-    disp_w = csv.writer(disp_f)
-    disp_w.writerow(["timestamp_ms","snapshot_id","player_id","displayed_x","displayed_y"])
+    # We will open CSV files *after* we learn client_id to avoid filename collisions
+    metrics_f = None
+    metrics_w = None
+    disp_f = None
+    disp_w = None
 
     # --------------------------
     # SEND INIT
@@ -75,10 +70,7 @@ def main(client_name="player1"):
     sock.sendto(pkt, SERVER_ADDR)
     seq_out += 1
 
-    client_id = None
-    players_raw = {}
-    players_smooth = {}
-
+    # Wait for ACK and client_id
     while client_id is None:
         try:
             data, _ = sock.recvfrom(2048)
@@ -100,10 +92,34 @@ def main(client_name="player1"):
             continue
 
         cid, x, y = struct.unpack(">BBB", payload)
-        client_id = cid
-        players_raw[cid] = (float(x), float(y))
-        players_smooth[cid] = (float(x), float(y))
-        print(f"Connected as client {cid} at ({x},{y})")
+        client_id = int(cid)
+        players_raw[client_id] = (float(x), float(y))
+        players_smooth[client_id] = (float(x), float(y))
+        print(f"Connected as client {client_id} at ({x},{y})")
+
+        # Now open per-client CSV files (safe from collisions)
+        metrics_fname = f"client_metrics_{client_id}.csv"
+        disp_fname = f"client_display_{client_id}.csv"
+
+        # Ensure no leftover files with same name; open fresh
+        if os.path.exists(metrics_fname):
+            os.remove(metrics_fname)
+        if os.path.exists(disp_fname):
+            os.remove(disp_fname)
+
+        metrics_f = open(metrics_fname, "w", newline="")
+        metrics_w = csv.writer(metrics_f)
+        metrics_w.writerow([
+            "client_id","snapshot_id","seq_num",
+            "server_timestamp_ms","recv_time_ms",
+            "latency_ms","jitter_ms","lost_snapshots"
+        ])
+        metrics_f.flush()
+
+        disp_f = open(disp_fname, "w", newline="")
+        disp_w = csv.writer(disp_f)
+        disp_w.writerow(["timestamp_ms","snapshot_id","player_id","displayed_x","displayed_y"])
+        disp_f.flush()
 
     # EVENT RDT
     event_seq = 0
@@ -177,7 +193,7 @@ def main(client_name="player1"):
                         break
                     pid, x, y = struct.unpack_from(">BBB", payload, offset)
                     offset += 3
-                    new_positions[pid] = (float(x), float(y))
+                    new_positions[int(pid)] = (float(x), float(y))
 
                 # latency & jitter
                 latency = recv_ms - ser_ms
@@ -193,14 +209,15 @@ def main(client_name="player1"):
 
                 # log displayed positions
                 for pid, (sx, sy) in players_smooth.items():
-                    disp_w.writerow([recv_ms, snap, pid, sx, sy])
+                    # ensure consistent primitive types
+                    disp_w.writerow([int(recv_ms), int(snap), int(pid), float(sx), float(sy)])
                 disp_f.flush()
 
                 # metrics log
                 metrics_w.writerow([
-                    client_id, snap, seq,
-                    ser_ms, recv_ms,
-                    latency, jitter, lost_snapshots
+                    int(client_id), int(snap), int(seq),
+                    int(ser_ms), int(recv_ms),
+                    float(latency), float(jitter), int(lost_snapshots)
                 ])
                 metrics_f.flush()
 
@@ -243,11 +260,13 @@ def main(client_name="player1"):
             send_critical_event(event_type=2, now_ms=now_ms)
             next_event_time = time.time() + 1.5
 
-    metrics_f.close()
-    disp_f.close()
+    # Cleanup
+    if metrics_f:
+        metrics_f.close()
+    if disp_f:
+        disp_f.close()
     sock.close()
     print("Client finished.")
-
 
 if __name__ == "__main__":
     main("player1")
