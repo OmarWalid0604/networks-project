@@ -1,0 +1,40 @@
+name: Phase 2 Automated Tests
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  phase2:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 python3-pip tcpdump tshark iproute2
+
+      - name: Install Python dependencies (if any)
+        run: |
+          pip3 install pandas matplotlib numpy
+
+      - name: Make scripts executable
+        run: |
+          chmod +x run_all_tests.sh
+
+      - name: Run Phase 2 test scenarios
+        run: |
+          sudo ./run_all_tests.sh
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: results_phase2
+          path: results_phase2/
