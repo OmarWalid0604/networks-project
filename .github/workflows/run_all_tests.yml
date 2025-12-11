@@ -13,7 +13,10 @@ jobs:
       contents: write
 
     steps:
-    
+          
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -21,12 +24,9 @@ jobs:
 
       - name: Install Python dependencies (if any)
         run: |
-          pip install pandas matplotlib numpy
-          
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-
+          pip install pandas
+          pip install matplotlib
+          pip install numpy
 
       - name: Make scripts executable
         run: |
