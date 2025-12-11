@@ -98,8 +98,8 @@ def main(client_name="player1"):
         print(f"Connected as client {client_id} at ({x},{y})")
 
         # Now open per-client CSV files (safe from collisions)
-        metrics_fname = f"client_metrics_{client_id}.csv"
-        disp_fname = f"client_display_{client_id}.csv"
+        metrics_fname = f"client_metrics.csv"
+        disp_fname = f"client_display.csv"
 
         # Ensure no leftover files with same name; open fresh
         if os.path.exists(metrics_fname):
