@@ -23,7 +23,8 @@ jobs:
 
       - name: Install Python dependencies (if any)
         run: |
-          pip3 install pandas matplotlib numpy
+          sudo python3 -m pip install --upgrade pip
+          sudo python3 -m pip install pandas matplotlib numpy
 
       - name: Make scripts executable
         run: |
